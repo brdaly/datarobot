@@ -1,0 +1,360 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Predicting Bad Loans\n",
+    "\n",
+    "## Overview\n",
+    "In this example we will build a binary classification model using the Lending Club dataset.\n",
+    "Here is a list of things we will touch on during this notebook:\n",
+    "\n",
+    "- Installing the `datarobot` package\n",
+    "- Configuring the client\n",
+    "- Creating a project\n",
+    "- Changing the datatype of some of the source columns\n",
+    "- Selecting the source columns used in the modeling process\n",
+    "- Running the automated modeling process\n",
+    "- Generating predictions\n",
+    "\n",
+    "\n",
+    "## Prerequisites\n",
+    "In order to run this notebook yourself, you will need the following:\n",
+    "\n",
+    "- This notebook. If you are viewing this in the HTML documentation bundle, you can download all of the example notebooks and supporting materials from [Downloads](../index.rst).\n",
+    "- The required dataset, which is included in the same directory as this notebook.\n",
+    "- A DataRobot API token. You can find your API token by logging into the DataRobot Web User Interface and looking in your `Profile`.\n",
+    "\n",
+    "\n",
+    "### Installing the `datarobot` package\n",
+    "The `datarobot` package is hosted on PyPI. You can install it via:\n",
+    "```\n",
+    "pip install datarobot\n",
+    "```\n",
+    "from the command line. Its main dependencies are `numpy` and `pandas`, which could take some time to install on a new system. We highly recommend use of virtualenvs to avoid conflicts with other dependencies in your system-wide python installation."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Getting Started\n",
+    "This line imports the `datarobot` package. By convention, we always import it with the alias `dr`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import datarobot as dr"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Other Important Imports\n",
+    "We'll use these in this notebook as well. If the previous cell and the following\n",
+    "cell both run without issue, you're in good shape."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import datetime\n",
+    "import pandas as pd"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Configure the Python Client\n",
+    "Configuring the client requires the following two things:\n",
+    "\n",
+    "- A DataRobot endpoint - where the API server can be found\n",
+    "- A DataRobot API token - a token the server uses to identify and validate the user making API requests\n",
+    "\n",
+    "The endpoint is usually the URL you would use to log into the DataRobot Web User Interface (e.g., https://app.datarobot.com) with \"/api/v2/\" appended, e.g., (https://app.datarobot.com/api/v2/).\n",
+    "\n",
+    "You can find your API token by logging into the DataRobot Web User Interface and looking in your `Profile.`\n",
+    "\n",
+    "The Python client can be configured in several ways. The example we'll use in this notebook is to point to a `yaml` file that has the information. This is a text file containing two lines like this:\n",
+    "```yaml\n",
+    "endpoint: https://app.datarobot.com/api/v2/\n",
+    "token: NWU0ZmU5MjMyMWFjOGQxM2VlOGNmYWVlOnhpcXMveDVrS0NYbjA5YnQyL3EyL01IdFhJUS9zK2JxRmJKNHFKZDJtNXM9\n",
+    "```\n",
+    "\n",
+    "If you want to run this notebook without changes, please save your configuration in a file located under your home directory called `~/.config/datarobot/drconfig.yaml`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "SyntaxError",
+     "evalue": "invalid syntax (<ipython-input-7-cb5d6cdccb64>, line 8)",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[1;36m  File \u001b[1;32m\"<ipython-input-7-cb5d6cdccb64>\"\u001b[1;36m, line \u001b[1;32m8\u001b[0m\n\u001b[1;33m    ~/.config/datarobot/dr.config.yaml\u001b[0m\n\u001b[1;37m     ^\u001b[0m\n\u001b[1;31mSyntaxError\u001b[0m\u001b[1;31m:\u001b[0m invalid syntax\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Initialization with arguments\n",
+    "dr.Client(token='NWU0ZmU5MjMyMWFjOGQxM2VlOGNmYWVlOnhpcXMveDVrS0NYbjA5YnQyL3EyL01IdFhJUS9zK2JxRmJKNHFKZDJtNXM9', endpoint='https://app.datarobot.com/api/v2/')\n",
+    "\n",
+    "# Initialization with a config file in the same directory as this notebook\n",
+    "dr.Client(config_path='drconfig.yaml')\n",
+    "\n",
+    "# Initialization with a config file located at\n",
+    "~/.config/datarobot/dr.config.yaml\n",
+    "dr.Client()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Create the Project\n",
+    "Here, we use the `datarobot` package to upload a new file and create a project. The name of the project is optional, but can be helpful when trying to sort among many projects on DataRobot."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "filename = '10K_Lending_Club_Loans.csv'\n",
+    "now = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M')\n",
+    "project_name = '10K_Lending_Club_Loans_{}'.format(now)\n",
+    "proj = dr.Project.create(sourcedata=filename,\n",
+    "                         project_name=project_name)\n",
+    "print('Project ID: {}'.format(proj.id))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Select Features for Modeling\n",
+    "First, retrieve the raw feature list. This corresponds to the columns in the input spreadsheet."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "raw = [feat_list for feat_list in proj.get_featurelists()\n",
+    "       if feat_list.name == 'Raw Features'][0]\n",
+    "raw_features = [\n",
+    "    {\n",
+    "        \"name\": feat,\n",
+    "        \"type\": dr.Feature.get(proj.id, feat).feature_type\n",
+    "    }\n",
+    "    for feat in raw.features\n",
+    "]\n",
+    "pd.DataFrame.from_dict(raw_features)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Modify Feature Types\n",
+    "We can tweak features to improve the modeling. For example, we might change `delinq_2yrs` from an integer into a categorical."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "proj.create_type_transform_feature(\n",
+    "    \"delinq_2yrs(Cat)\",  # new feature name\n",
+    "    \"delinq_2yrs\",       # parent name\n",
+    "    dr.enums.VARIABLE_TYPE_TRANSFORM.CATEGORICAL_INT\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Then, we can change type of `addr_state` from categorical into text."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "proj.create_type_transform_feature(\n",
+    "    \"addr_state(Text)\",  # new feature name\n",
+    "    \"addr_state\",        # parent name\n",
+    "    dr.enums.VARIABLE_TYPE_TRANSFORM.TEXT\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Select Features for Modeling\n",
+    "Next, we create a new feature list where we remove the features `delinq_2yrs` and `addr_state` and add the modified features we just created."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "feature_list_name = \"new_feature_list\"\n",
+    "\n",
+    "new_feature_list = proj.create_featurelist(\n",
+    "    feature_list_name,\n",
+    "    list((set(raw.features) - {\"addr_state\", \"delinq_2yrs\"}) |\n",
+    "         {\"addr_state(Text)\", \"delinq_2yrs(Cat)\"})\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Run the Automated Modeling Process\n",
+    "Now we can start the modeling process. The target for this problem is called `is_bad` - a binary variable indicating whether or not the customer defaults on a particular loan.\n",
+    "\n",
+    "We specify that the metric that should be used is `LogLoss`. Without a specification DataRobot would automatically select an appropriate default metric.\n",
+    "\n",
+    "The `featurelist_id` parameter tells DataRobot to model on that specific featurelist, rather than the default `Informative Features`.\n",
+    "\n",
+    "Finally, the `worker_count` parameter specifies how many workers should be used for this project. Passing a value of `-1` tells DataRobot to set the worker count to the maximum available to you. You can also specify the exact number of workers to use, but this command will fail if you request more workers than your account allows. If you need more resources than what has been allocated to you, you should think about upgrading your license.\n",
+    "\n",
+    "The last command in this cell is just a blocking loop that periodically checks on the project to see if it is done, printing out the number of jobs in progress and in the queue along the way so you can see progress. The automated model exploration process will occasionally add more jobs to the queue, so don't be alarmed if the number of jobs does not strictly decrease over time."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "proj.set_target(\n",
+    "    \"is_bad\",\n",
+    "    mode=dr.enums.AUTOPILOT_MODE.FULL_AUTO,\n",
+    "    metric=\"LogLoss\",\n",
+    "    featurelist_id=new_feature_list.id,\n",
+    "    worker_count=-1\n",
+    ")\n",
+    "\n",
+    "proj.wait_for_autopilot()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Exploring Trained Models\n",
+    "We can see how many models DataRobot built for this project by querying. Each of them has been tuned individually. Models that appear to have the same name differ either in the amount of data used in training or in the preprocessing steps used (or both)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "models = proj.get_models()\n",
+    "for idx, model in enumerate(models):\n",
+    "    print('[{}]: {} - {}'.\n",
+    "          format(idx, model.metrics['LogLoss']['validation'],\n",
+    "                 model.model_type))\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Generating Predictions\n",
+    "\n",
+    "### Predictions: modeling workers vs. dedicated servers\n",
+    "There are two ways to generate predictions in DataRobot: using modeling workers and dedicated prediction servers. In this notebook we will use the former, which is slower, occupies one of your modeling worker slots, and has no strong latency guarantees because the jobs go through the project queue. This method can be useful for developing and evaluating models. However, in a production environment, a faster, dedicated prediction server configuration may be more appropriate.\n",
+    "\n",
+    "### Three step process\n",
+    "As just mentioned, these predictions go through the modeling queue, so there is a three-step process. The first step is to upload your dataset; the second is to generate prediction jobs. Finally, you need to retreive your predictions when the job is done.\n",
+    "\n",
+    "To simplify this example we will make predictions for the same data used to train the models. We could use any of the models DataRobot generated, but will select the model that DataRobot recommends for deployment. DataRobot weighs both model accuracy and runtime to develop this recommendation."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dataset = proj.upload_dataset(filename)\n",
+    "\n",
+    "model = dr.ModelRecommendation.get(\n",
+    "    proj.id,\n",
+    "    dr.enums.RECOMMENDED_MODEL_TYPE.RECOMMENDED_FOR_DEPLOYMENT\n",
+    ").get_model()\n",
+    "\n",
+    "pred_job = model.request_predictions(dataset.id)\n",
+    "preds = pred_job.get_result_when_complete()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Results\n",
+    "This example is a binary, or two-class classification problem, so DataRobot estimates the probability of each row is in the positive class (a bad loan) and negative class (not a bad loan). `positive_probability` and `class_1.0` represent the former, and `class_0.0` the latter. Given a configurable `prediction_threshold`, DataRobot creates a `prediction` whose value is the predicted class for each row. The predictions can be matched to the the uploaded prediction data set through the `row_id` predictions field. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "preds.head()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
