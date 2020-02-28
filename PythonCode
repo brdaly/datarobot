@@ -1,0 +1,29 @@
+# Usage: python datarobot_shared_prediction.py <input-file.csv>
+# Note: Before running this, change API_TOKEN to the value on your profile page
+# We highly recommend that you update SSL certificates with:
+#     pip install -U urllib3[secure] certifi
+# This example snippet makes use of the DataRobot API Python client, installable with:
+#     pip install "datarobot"
+# See https://pypi.python.org/pypi/datarobot/ for more information and documentation.
+import sys
+
+import datarobot as dr
+
+
+API_TOKEN = 'undefined'
+PROJECT_ID = '5e5839a2c2d6e51a447791ce'
+MODEL_ID = '5e5953f5ca50ec047fcca82d'
+MAX_WAIT = 60 * 60  # Maximum number of seconds to wait for prediction job to finish
+
+dr.Client(endpoint='https://app.datarobot.com/api/v2', token=API_TOKEN)
+project = dr.Project.get(PROJECT_ID)
+model = dr.Model.get(PROJECT_ID, MODEL_ID)
+
+# Upload dataset to make predictions
+pred_dataset = project.upload_dataset(sys.argv[1])
+
+# Make predictions on your data
+pred_job = model.request_predictions(pred_dataset.id)
+predictions = pred_job.get_result_when_complete(max_wait=MAX_WAIT)
+for row in predictions.iterrows():
+    print(row)
